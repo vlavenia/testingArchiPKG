@@ -21,12 +21,12 @@ jobs:
           sudo apt-get install -y \
             xvfb \
             libgtk-3-0t64 \
-            libnotify4t64 \
             libnss3 \
             libxss1 \
             libasound2t64 \
-            libxtst6t64 \
-            libgbm1
+            libxtst6 \
+            libgbm1 \
+            libnotify-bin
 
       - name: Download Archi
         run: |
