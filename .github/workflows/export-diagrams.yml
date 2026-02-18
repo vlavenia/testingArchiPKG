@@ -3,8 +3,6 @@ name: Auto Export Archi
 on:
   push:
     branches: [ master ]
-    paths:
-      - 'model/**'
   workflow_dispatch:
 
 permissions:
