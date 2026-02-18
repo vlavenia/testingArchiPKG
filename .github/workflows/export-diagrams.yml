@@ -30,7 +30,7 @@ jobs:
 
       - name: Download Archi
         run: |
-          wget -q "https://www.archimatetool.com/downloads/archi/5.3/Archi-Linux64-5.3.0.tgz" \
+          wget -q "https://github.com/archimatetool/archi.io/releases/download/5.7.0/Archi-Linux64-5.7.0.tgz" \
             -O archi.tgz
           tar -xzf archi.tgz
           chmod +x Archi/Archi
