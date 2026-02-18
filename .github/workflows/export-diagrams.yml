@@ -1,84 +1,49 @@
-name: Export ArchiMate Diagrams
+name: Export ArchiMate Diagrams to PNG
 
 on:
   push:
-    branches-ignore:
-      - "auto/exported-diagrams"
+    branches:
+      - main
     paths:
-      - "model/**"
-      - "scripts/**"
-      - "tools/archi_export/**"
-  pull_request:
-    paths:
-      - "model/**"
-      - "scripts/**"
+      - 'model/**'   # hanya trigger kalau ada perubahan di folder model
 
 jobs:
-  export:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  export-png:
+    runs-on: ubuntu-latest
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          if (Test-Path requirements.txt) { pip install -r requirements.txt } else { Write-Output 'No requirements.txt found' }
-        shell: pwsh
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb libgtk-3-0 libnotify4 \
+            libnss3 libxss1 libasound2 libxtst6
 
-      - name: Run exporter
+      - name: Download Archi
         run: |
-          python scripts/export_archimate.py --source model --outdir exported_diagrams
-        shell: pwsh
+          wget -q https://www.archimatetool.com/downloads/archi/5.3/Archi-Linux64-5.3.0.tgz \
+            -O archi.tgz
+          mkdir -p archi
+          tar -xzf archi.tgz -C archi --strip-components=1
 
-      - name: Upload exported PNGs as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: exported-diagrams
-          path: exported_diagrams/**
+      - name: Export diagrams to PNG
+        run: |
+          mkdir -p exports
+          xvfb-run --auto-servernum archi/Archi \
+            -application com.archimatetool.commandline.app \
+            -nosplash \
+            --loadModel "${{ github.workspace }}/model" \
+            --exportImages \
+              format=PNG \
+              scale=2.0 \
+              folder="${{ github.workspace }}/exports"
 
-      - name: Commit & push exported diagrams (optional)
-        if: github.event_name != 'pull_request'
+      - name: Commit and push PNG exports
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          $branch = 'auto/exported-diagrams'
-          git fetch origin $branch || Write-Output 'branch may not exist yet'
-          if (git rev-parse --verify $branch 2>$null) {
-            git switch $branch
-          } else {
-            git switch -c $branch
-          }
-
-          # Stage only changed PNG files under exported_diagrams (avoid adding other files)
-          $changes = git status --porcelain
-          $pngFiles = @()
-          if ($changes) {
-            $lines = $changes -split "`n"
-            foreach ($l in $lines) {
-              $t = $l.Trim()
-              if ($t.Length -ge 4) {
-                $path = $t.Substring(3)
-                if ($path -and $path -like 'exported_diagrams/*.png') {
-                  $pngFiles += $path
-                }
-              }
-            }
-          }
-
-          if ($pngFiles.Count -gt 0) {
-            foreach ($p in $pngFiles) { git add --force $p }
-            git commit -m "chore: update exported diagrams [skip ci]" || Write-Output 'commit failed'
-            $repo = "${{ github.repository }}"
-            $token = "${{ secrets.GITHUB_TOKEN }}"
-            git remote set-url origin "https://x-access-token:$token@github.com/$repo.git"
-            git push --set-upstream origin $branch
-          } else {
-            Write-Output 'No exported PNG changes to commit.'
-          }
-        shell: pwsh
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add exports/
+          git diff --staged --quiet || git commit -m "ci: auto-export diagrams to PNG [skip ci]"
+          git push
