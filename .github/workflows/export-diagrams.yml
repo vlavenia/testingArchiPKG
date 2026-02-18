@@ -15,42 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            xvfb \
-            libgtk-3-0t64 \
-            libnss3 \
-            libxss1 \
-            libasound2t64 \
-            libxtst6 \
-            libgbm1 \
-            libnotify-bin
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Download Archi
-        run: |
-          wget -q "https://github.com/archimatetool/archi.io/releases/download/5.7.0/Archi-Linux64-5.7.0.tgz" \
-            -O archi.tgz
-          tar -xzf archi.tgz
-          chmod +x Archi/Archi
+      - name: Install Python dependencies
+        run: pip install Pillow
 
       - name: Export Diagrams to PNG
+        env:
+          MODEL_PATH: ${{ github.workspace }}/model/testinganarchipkg.archimate
+          OUTPUT_FOLDER: ${{ github.workspace }}/exports
         run: |
-          mkdir -p exports
-          xvfb-run --auto-servernum Archi/Archi \
-            -application com.archimatetool.commandline.app \
-            -consoleLog \
-            -nosplash \
-            --loadModel "${{ github.workspace }}/model/testinganarchipkg.archimate" \
-            --exportImages \
-              format=PNG \
-              scale=2.0 \
-              folder="${{ github.workspace }}/exports" \
-            2>&1 | tee archi-output.log
-
+          python scripts/export_png.py
           echo "=== Hasil export ==="
-          find exports/ -type f || echo "Tidak ada file hasil export"
+          find exports/ -type f -name "*.png" || echo "Tidak ada file PNG"
 
       - name: Commit & Push PNG
         run: |
