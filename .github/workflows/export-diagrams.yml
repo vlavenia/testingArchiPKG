@@ -25,7 +25,7 @@ jobs:
 
       - name: Export Diagrams to PNG
         env:
-          MODEL_PATH: ${{ github.workspace }}/model/testinganarchipkg.archimate
+          MODEL_FOLDER: ${{ github.workspace }}/model
           OUTPUT_FOLDER: ${{ github.workspace }}/exports
         run: |
           python scripts/export_png.py
