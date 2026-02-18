@@ -10,36 +10,27 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: pip install Pillow
-
-      - name: Export Diagrams to PNG
-        env:
-          MODEL_PATH: ${{ github.workspace }}/model/testinganarchipkg.archimate
-          OUTPUT_FOLDER: ${{ github.workspace }}/exports
+      - name: Export Diagrams via Archi
+        shell: cmd
         run: |
-          python scripts/export_png.py
-          echo "=== Hasil export ==="
-          find exports/ -type f -name "*.png" || echo "Tidak ada file PNG"
+          mkdir "%GITHUB_WORKSPACE%\exports" 2>nul
+          "C:\Program Files\Archi\Archi.exe" ^
+            -application com.archimatetool.commandline.app ^
+            -nosplash ^
+            --loadModel "%GITHUB_WORKSPACE%\model" ^
+            --exportImages format=PNG scale=2.0 folder="%GITHUB_WORKSPACE%\exports"
+          echo === Hasil export ===
+          dir "%GITHUB_WORKSPACE%\exports\*.png" /b 2>nul || echo Tidak ada PNG
 
-      - name: Commit & Push PNG
+      - name: Commit and Push PNG
+        shell: cmd
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add -f exports/
-          if git diff --cached --quiet; then
-            echo "Tidak ada perubahan, skip commit."
-          else
-            git commit -m "ci: auto export diagrams to PNG [skip ci]"
-            git push
-          fi
+          git diff --cached --quiet && echo "Tidak ada perubahan" || (git commit -m "ci: auto export diagrams to PNG [skip ci]" && git push)
