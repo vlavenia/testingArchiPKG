@@ -1,0 +1,45 @@
+name: Auto Export Archi
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install Pillow
+
+      - name: Export Diagrams to PNG
+        env:
+          MODEL_PATH: ${{ github.workspace }}/model/testinganarchipkg.archimate
+          OUTPUT_FOLDER: ${{ github.workspace }}/exports
+        run: |
+          python scripts/export_png.py
+          echo "=== Hasil export ==="
+          find exports/ -type f -name "*.png" || echo "Tidak ada file PNG"
+
+      - name: Commit & Push PNG
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add -f exports/
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan, skip commit."
+          else
+            git commit -m "ci: auto export diagrams to PNG [skip ci]"
+            git push
+          fi
