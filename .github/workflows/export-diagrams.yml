@@ -10,36 +10,48 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: pip install Pillow
-
-      - name: Export Diagrams to PNG
-        env:
-          MODEL_FOLDER: ${{ github.workspace }}/model
-          OUTPUT_FOLDER: ${{ github.workspace }}/exports
+      - name: Export Diagrams via Archi
+        shell: powershell
         run: |
-          python scripts/export_png.py
-          echo "=== Hasil export ==="
-          find exports/ -type f -name "*.png" || echo "Tidak ada file PNG"
+          $archiPath = "C:\Program Files\Archi\Archi.exe"
+          $modelPath = "${{ github.workspace }}\model"
+          $exportPath = "${{ github.workspace }}\exports"
+
+          # Buat folder exports jika belum ada
+          New-Item -ItemType Directory -Force -Path $exportPath
+
+          # Jalankan Archi CLI export
+          & $archiPath `
+            -application com.archimatetool.commandline.app `
+            -nosplash `
+            --loadModel $modelPath `
+            --exportImages `
+              format=PNG `
+              scale=2.0 `
+              folder=$exportPath
+
+          # Tampilkan hasil
+          Write-Host "=== Hasil export ==="
+          Get-ChildItem $exportPath -Filter "*.png" | ForEach-Object {
+            Write-Host "  ✅ $($_.Name)"
+          }
 
       - name: Commit & Push PNG
+        shell: powershell
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add -f exports/
-          if git diff --cached --quiet; then
-            echo "Tidak ada perubahan, skip commit."
-          else
+          $diff = git diff --cached --name-only
+          if ($diff) {
             git commit -m "ci: auto export diagrams to PNG [skip ci]"
             git push
-          fi
+            Write-Host "✅ PNG berhasil di-push ke GitHub"
+          } else {
+            Write-Host "Tidak ada perubahan, skip commit."
+          }
