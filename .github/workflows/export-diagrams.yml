@@ -16,43 +16,21 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Export Diagrams via Archi
+        shell: cmd
         run: |
-          $archiPath = "C:\Program Files\Archi\Archi.exe"
-          $modelPath = "$env:GITHUB_WORKSPACE\model"
-          $exportPath = "$env:GITHUB_WORKSPACE\exports"
+          mkdir "%GITHUB_WORKSPACE%\exports" 2>nul
+          "C:\Program Files\Archi\Archi.exe" ^
+            -application com.archimatetool.commandline.app ^
+            -nosplash ^
+            --loadModel "%GITHUB_WORKSPACE%\model" ^
+            --exportImages format=PNG scale=2.0 folder="%GITHUB_WORKSPACE%\exports"
+          echo === Hasil export ===
+          dir "%GITHUB_WORKSPACE%\exports\*.png" /b 2>nul || echo Tidak ada PNG
 
-          New-Item -ItemType Directory -Force -Path $exportPath | Out-Null
-
-          Start-Process -FilePath $archiPath -ArgumentList @(
-            "-application", "com.archimatetool.commandline.app",
-            "-nosplash",
-            "--loadModel", $modelPath,
-            "--exportImages",
-            "format=PNG",
-            "scale=2.0",
-            "folder=$exportPath"
-          ) -Wait -NoNewWindow
-
-          Write-Host "=== Hasil export ==="
-          $pngs = Get-ChildItem $exportPath -Filter "*.png"
-          if ($pngs.Count -eq 0) {
-            Write-Host "Tidak ada file PNG dihasilkan"
-          } else {
-            $pngs | ForEach-Object { Write-Host "  ✅ $($_.Name)" }
-          }
-        shell: pwsh
-
-      - name: Commit & Push PNG
+      - name: Commit and Push PNG
+        shell: cmd
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add -f exports/
-          $diff = git diff --cached --name-only
-          if ($diff) {
-            git commit -m "ci: auto export diagrams to PNG [skip ci]"
-            git push
-            Write-Host "✅ PNG berhasil di-push ke GitHub"
-          } else {
-            Write-Host "Tidak ada perubahan, skip commit."
-          }
-        shell: pwsh
+          git diff --cached --quiet && echo "Tidak ada perubahan" || (git commit -m "ci: auto export diagrams to PNG [skip ci]" && git push)
