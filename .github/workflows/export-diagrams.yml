@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - 'model/**'
+  workflow_dispatch:
 
 jobs:
   export-png:
