@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y xvfb libgtk-3-0 libnotify4 \
-            libnss3 libxss1 libasound2 libxtst6 libgbm1
+            libnss3 libxss1 libasound2t64 libxtst6 libgbm1
 
       - name: Download Archi
         run: |
